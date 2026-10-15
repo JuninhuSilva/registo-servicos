@@ -1,6 +1,6 @@
 /* Service worker: guarda a app para funcionar sem rede.
    Ao mudar algum ficheiro, aumentar VERSION para os telemóveis receberem a nova versão. */
-const VERSION = 'v1';
+const VERSION = 'v2';
 const CACHE = 'registo-servicos-' + VERSION;
 const SHELL = [
   './',
@@ -21,7 +21,7 @@ const SHELL = [
 ];
 
 self.addEventListener('install', e => {
-  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL.map(u => new Request(u, { cache: 'reload' })))).then(() => self.skipWaiting()));
 });
 
 self.addEventListener('activate', e => {

@@ -29,6 +29,7 @@ const ICON = {
   right: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
   cal: '<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><rect x="3.5" y="5" width="17" height="15.5" rx="2.5"/><path d="M3.5 10h17M8 3v4M16 3v4"/></svg>',
   chev: '<svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg>',
+  paste: '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="4" width="14" height="17" rx="2.5"/><path d="M9 4V3h6v1M9 11h6M9 15h4"/></svg>',
   download: '<svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#FFC21A" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>',
 };
 
@@ -169,6 +170,26 @@ function setWO(id, value) {
   const sumEl = document.querySelector(`[data-wosum="${rec.tipo}"]`);
   if (sumEl) sumEl.textContent = woSummary(dayList(S.selectedDate, rec.tipo));
 }
+/* Botão «Colar»: lê a área de transferência e põe o texto na WO */
+async function pasteWO(id) {
+  const input = document.querySelector(`.wo-input[data-id="${id}"]`);
+  let text = '';
+  try {
+    if (!navigator.clipboard || !navigator.clipboard.readText) throw new Error('sem api');
+    text = await navigator.clipboard.readText();
+  } catch (e) {
+    if (input) input.focus();
+    showToast('Não foi possível colar. Toque longo no campo e escolha «Colar».');
+    return;
+  }
+  const wo = String(text || '').replace(/\s+/g, '').toUpperCase().slice(0, 40);
+  if (!wo) { showToast('Nada copiado para colar'); return; }
+  if (input) input.value = wo;
+  setWO(id, wo);
+  try { navigator.vibrate && navigator.vibrate(15); } catch (e) {}
+  showToast(`WO colada · ${wo}`);
+}
+
 function flushWO() {
   Object.keys(woTimers).forEach(id => {
     clearTimeout(woTimers[id]);
@@ -220,6 +241,7 @@ function woListHTML(tipo, list) {
       <input class="wo-input" data-id="${r.id}" value="${esc(r.wo || '')}" placeholder="Nº da WO"
         autocapitalize="characters" autocomplete="off" autocorrect="off" spellcheck="false" enterkeyhint="done"
         aria-label="WO da ${ROTULO[tipo].toLowerCase()} ${i + 1}">
+      <button class="wo-paste" type="button" data-paste="${r.id}" aria-label="Colar WO na ${ROTULO[tipo].toLowerCase()} ${i + 1}">${ICON.paste}<span>Colar</span></button>
       <button class="wo-del" type="button" data-del="${r.id}" aria-label="Apagar ${ROTULO[tipo].toLowerCase()} ${i + 1}">×</button>
     </div>`).join('');
   return `<div class="wo-list" id="wo-${tipo}">${rows || `<span class="wo-empty">${empty}</span>`}</div>`;
@@ -637,6 +659,7 @@ document.addEventListener('click', e => {
   if (ds.go) { go(ds.go); return; }
   if (ds.inc) { addService(ds.inc); return; }
   if (ds.dec) { removeLast(ds.dec); return; }
+  if (ds.paste) { pasteWO(ds.paste); return; }
   if (ds.del) { removeService(S.items.find(r => r.id === ds.del)); return; }
   if (ds.acc) { S.openAccordion = S.openAccordion === ds.acc ? null : ds.acc; render(); return; }
   if (ds.shift) { const d = parse(S.selectedDate); d.setDate(d.getDate() + Number(ds.shift)); setDate(iso(d)); render(); return; }
@@ -711,6 +734,13 @@ async function requestWakeLock() {
   requestWakeLock();
   if (navigator.storage && navigator.storage.persist) { navigator.storage.persist().catch(() => {}); }
   if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-    navigator.serviceWorker.register('sw.js').catch(() => {});
+    // Quando chega uma versão nova da app, recarrega uma vez para a mostrar logo
+    const hadController = !!navigator.serviceWorker.controller;
+    let reloaded = false;
+    navigator.serviceWorker.addEventListener('controllerchange', () => {
+      if (!hadController || reloaded) return;
+      reloaded = true; flushWO(); location.reload();
+    });
+    navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).catch(() => {});
   }
 })();

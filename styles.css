@@ -235,6 +235,15 @@ svg { display: block; }
 .t-S .wo-input:focus { border-color: var(--support); }
 .t-A .wo-input:focus { border-color: var(--extra); }
 .card-install .wo-input:focus { box-shadow: 0 0 0 3px rgba(20,32,43,.25); }
+.wo-paste {
+  width: 56px; height: 48px; flex: none; border-radius: 12px; border: 2px solid var(--ink);
+  background: #fff; color: var(--ink); padding: 0;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px;
+  font: 700 11px/1 var(--sans);
+}
+.wo-paste:active { background: var(--bg); }
+.t-S .wo-paste { border-color: var(--support); color: var(--support); }
+.t-A .wo-paste { border-color: var(--extra); color: var(--extra); }
 .wo-del {
   width: 44px; height: 48px; flex: none; border-radius: 12px; border: none;
   background: var(--bg); font: 600 22px var(--sans); color: var(--ink);
